@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Path to the Pintos /tests/userprog/ directory.
+PA="/home/pintos/pintos/src/userprog"
+TERM="/usr/bin/gnome-terminal"
+echo $1
+if [ $1 = "-d" ]
+	then 
+	echo "Opening GDB session..."
+	KERNEL=$(find $PA -name "kernel.o")
+	/usr/bin/gnome-terminal -e "pintos-gdb $KERNEL"
+	echo "Running test with debugging."
+	TEST=$(find $PA -name $2)
+	pintos --gdb --filesys-size=2 -p $TEST -a $2 -- -f -q run $2
+else
+	for arg in "$@"
+	do
+		TEST=$(find $PA -name $arg)
+		pintos --filesys-size=2 -p $TEST -a $arg -- -f -q run $arg
+	done
+fi
