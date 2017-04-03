@@ -3,6 +3,9 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "lib/kernel/console.h"
+#include "userprog/process.h"
+#include "devices/shutdown.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -19,9 +22,13 @@ syscall_handler (struct intr_frame *f)
   printf("System call number is: %d\n",*sys_call_number);
   switch(*sys_call_number){
     case SYS_HALT: {
+      printf("Halt!\n");
+      shutdown_power_off();
       break;
     }
     case SYS_EXIT: {
+      printf("Exit call!\n");
+      process_exit();
       break;
     }
     case SYS_EXEC: {
@@ -46,10 +53,10 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_WRITE: {
-      int* fd = (int*) (f->esp - 4);
-      char* buffer = (char*) (f->esp - 8);
-      unsigned* size = (unsigned*) (f->esp-12);
-      printf("Current Values: fd: %d, buffer: %s, size: %d",*fd,buffer,*size);
+      //int* fd = (int*) (f->esp - 4);
+     // char* buffer = (char*) (f->esp - 8);
+      //unsigned* size = (unsigned*) (f->esp-12);
+      printf("Write Call!\n");
       break;
     }
     case SYS_SEEK: {

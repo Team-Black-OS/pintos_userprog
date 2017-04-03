@@ -33,6 +33,33 @@ process_execute (const char *file_name)
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
+  int MAX_WORDS = 50;              // setting 50 string word limit (as per manual) for size of file_name, equates to about 128 byte size argument string
+  char *arguments[MAX_WORDS];      // char* array to hold each argument
+  char * s = file_name;            // set pointer to file_name arg
+  char *token, *save_ptr;          // ptrs sent in for tracking location in string, do not need initial values.
+  int arg_count = 0;
+  int current_stack_pos = PHYS_BASE;
+  for (token = strtok_r (s, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))
+    {
+      printf ("argument:   '%s'\n", token);
+      arguments[arg_count] = token; // set ptr at index arg_count to token, a char* returned from strtok_r()
+      ++arg_count;
+    }
+
+  // Put each argument on the stack in reverse order.
+  for(int i = arg_count-1; i > 0; --i){
+    int len = strlen(arguments[i]);
+    strlcpy(current_stack_pos,arguments[i],len);
+    current_stack_pos -= len;
+  }
+
+  // Null pointer sentinel.
+  memset(current_stack_pos,0,4);
+  current_stack_pos -= 4;
+
+  hex_dump(current_stack_pos,current_stack_pos,25,true);
+
+    
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
@@ -440,7 +467,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE-12;
+        *esp = PHYS_BASE;
       else
         palloc_free_page (kpage);
     }
