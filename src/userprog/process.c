@@ -38,7 +38,7 @@ process_execute (const char *file_name)
   char * s = file_name;            // set pointer to file_name arg
   char *token, *save_ptr;          // ptrs sent in for tracking location in string, do not need initial values.
   int arg_count = 0;
-  int current_stack_pos = PHYS_BASE;
+  //int current_stack_pos = PHYS_BASE;
   for (token = strtok_r (s, " ", &save_ptr); token != NULL; token = strtok_r (NULL, " ", &save_ptr))
     {
       printf ("argument:   '%s'\n", token);
@@ -46,27 +46,13 @@ process_execute (const char *file_name)
       ++arg_count;
     }
 
-  // Put each argument on the stack in reverse order.
-  for(int i = arg_count-1; i > 0; --i){
-    int len = strlen(arguments[i]);
-    strlcpy(current_stack_pos,arguments[i],len);
-    current_stack_pos -= len;
-  }
-
-  // Null pointer sentinel.
-  memset(current_stack_pos,0,4);
-  current_stack_pos -= 4;
-
-  hex_dump(current_stack_pos,current_stack_pos,25,true);
-
-    
   fn_copy = palloc_get_page (0);
   if (fn_copy == NULL)
     return TID_ERROR;
-  strlcpy (fn_copy, file_name, PGSIZE);
+  strlcpy (fn_copy, arguments[0], PGSIZE);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (arguments[0], PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -210,7 +196,7 @@ struct Elf32_Phdr
     Elf32_Word p_align;
   };
 
-/* Values for p_type.  See [ELF1] 2-3. */
+/* p_type.  See [ELF1] 2-3. */
 #define PT_NULL    0            /* Ignore. */
 #define PT_LOAD    1            /* Loadable segment. */
 #define PT_DYNAMIC 2            /* Dynamic linking info. */
@@ -467,7 +453,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        *esp = PHYS_BASE-12;
       else
         palloc_free_page (kpage);
     }

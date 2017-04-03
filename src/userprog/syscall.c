@@ -53,10 +53,17 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_WRITE: {
-      //int* fd = (int*) (f->esp - 4);
-     // char* buffer = (char*) (f->esp - 8);
-      //unsigned* size = (unsigned*) (f->esp-12);
+      int* fd = (int*) (f->esp + 4);
+      char* buffer = *((char**) (f->esp + 8));
+      unsigned size = *((unsigned*) (f->esp+12));
       printf("Write Call!\n");
+      int retval = 0;
+      if (*fd == 1){
+        printf("Write to Console:\n");
+        putbuf(buffer,size);
+        retval = size;
+      }
+      f->eax = retval;
       break;
     }
     case SYS_SEEK: {
