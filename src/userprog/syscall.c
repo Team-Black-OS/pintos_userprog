@@ -19,7 +19,7 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   int* sys_call_number = (int*) f->esp;
-  printf("System call number is: %d\n",*sys_call_number);
+  //printf("System call number is: %d\n",*sys_call_number);
   switch(*sys_call_number){
     case SYS_HALT: {
       printf("Halt!\n");
@@ -56,10 +56,10 @@ syscall_handler (struct intr_frame *f)
       int* fd = (int*) (f->esp + 4);
       char* buffer = *((char**) (f->esp + 8));
       unsigned size = *((unsigned*) (f->esp+12));
-      printf("Write Call!\n");
+     // printf("Write Call!\n");
       int retval = 0;
       if (*fd == 1){
-        printf("Write to Console:\n");
+        //printf("Write to Console:\n");
         putbuf(buffer,size);
         retval = size;
       }
@@ -80,5 +80,4 @@ syscall_handler (struct intr_frame *f)
       break;
     }
   }
-  thread_exit ();
 }
