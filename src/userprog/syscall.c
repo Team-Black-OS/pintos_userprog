@@ -27,7 +27,11 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_EXIT: {
-      printf("Exit call!\n");
+      char* thr_name = thread_name();
+      int *exit_code = (int*) (f->esp + 4);
+      int retval = *exit_code;
+      printf("%s: exit(%d)\n",thr_name,*exit_code);
+      f->eax = retval;
       process_exit();
       break;
     }
