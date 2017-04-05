@@ -500,7 +500,7 @@ setup_stack (void **esp, char* in_args)
         if((int) *esp & 0x03){
           // Clear the lowest two bits. 
           // This gets us the 'closest' next word-aligned address.
-          *esp = (int) *esp & ~0x03;
+          *esp =  (void*) ((int) *esp & ~0x03);
         }
         // 2. Push NULL pointer
         *esp -= 4;
@@ -520,8 +520,8 @@ setup_stack (void **esp, char* in_args)
         // 6. Push 'fake' return address.
         *esp -= 4;
         memset(*esp,0,4);
-
-        test_stack((int*) *esp);
+        //*esp -= 4;
+        printf("esp =%x\n",*esp);
       }
       else
         palloc_free_page (kpage);

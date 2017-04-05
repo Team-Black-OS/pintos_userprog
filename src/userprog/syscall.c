@@ -32,7 +32,7 @@ syscall_handler (struct intr_frame *f)
       int retval = *exit_code;
       printf("%s: exit(%d)\n",thr_name,*exit_code);
       f->eax = retval;
-      process_exit();
+      thread_exit();
       break;
     }
     case SYS_EXEC: {
@@ -59,7 +59,7 @@ syscall_handler (struct intr_frame *f)
     case SYS_WRITE: {
       int* fd = (int*) (f->esp + 4);
       char* buffer = *((char**) (f->esp + 8));
-      unsigned size = *((unsigned*) (f->esp+12));
+      unsigned size = *((unsigned*) (f->esp + 12));
      // printf("Write Call!\n");
       int retval = 0;
       if (*fd == 1){
