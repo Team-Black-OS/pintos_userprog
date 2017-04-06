@@ -4,6 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "lib/kernel/console.h"
+#include "lib/user/syscall.h"
 #include "userprog/process.h"
 #include "devices/shutdown.h"
 
@@ -32,6 +33,7 @@ syscall_handler (struct intr_frame *f)
       int retval = *exit_code;
       printf("%s: exit(%d)\n",thr_name,*exit_code);
       f->eax = retval;
+      sema_up(&thread_current()->wait_sema);
       thread_exit();
       break;
     }
@@ -39,6 +41,9 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_WAIT: {
+      pid_t wait_pid = *((pid_t*) (f->esp + 4));
+      printf("Waiting for thread: %d\n",wait_pid);
+      process_wait(wait_pid);
       break;
     }
     case SYS_CREATE: {

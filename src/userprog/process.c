@@ -95,9 +95,14 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
-  while(true);
+  struct thread* rt_thread;
+  rt_thread = thread_at_tid(child_tid);
+  if(rt_thread->tid == -1){
+    return -1;
+  }
+  sema_down(&rt_thread->wait_sema);
   return -1;
 }
 
@@ -521,7 +526,7 @@ setup_stack (void **esp, char* in_args)
         *esp -= 4;
         memset(*esp,0,4);
         //*esp -= 4;
-        printf("esp =%x\n",*esp);
+        //printf("esp =%x\n",*esp);
       }
       else
         palloc_free_page (kpage);

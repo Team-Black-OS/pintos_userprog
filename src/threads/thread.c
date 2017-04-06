@@ -331,6 +331,21 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+struct thread* thread_at_tid(tid_t target_tid){
+    struct list_elem *e;
+    for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+      if(t->tid == target_tid){
+        return t;
+      }
+    }
+    struct thread bad_thread;
+    bad_thread.tid = -1;
+    return &bad_thread;
+}
+
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) 
@@ -463,7 +478,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-
+  // Initialize list of children for the thread.
+  list_init(&t->children);
+  // Initialize semaphore for this thread.
+  sema_init(&t->wait_sema,0);
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
   intr_set_level (old_level);
