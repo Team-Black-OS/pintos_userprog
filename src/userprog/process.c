@@ -66,7 +66,13 @@ start_process (void *in_data)
   //bool success;
   struct pass_in *data = (struct pass_in*) in_data;
 
+// Allocate the structure for pass_in data here?
+  struct shared_data* share = malloc(sizeof(struct shared_data));
+  sema_init(&share->wait_sema,0);
+  share->exit_code = -2;
+  share->reference_count = 2;
 
+  thread_current()->parent_share = share;
 
 
   /* Initialize interrupt frame and load executable. */
@@ -75,7 +81,6 @@ start_process (void *in_data)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   data->load_success = load (data->file_name, &if_.eip, &if_.esp);
-
   /* If load failed, quit. */
   palloc_free_page (data);
   if (!data->load_success) 
@@ -345,6 +350,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
+  //file_deny_write(file);
   file_close (file);
   return success;
 }

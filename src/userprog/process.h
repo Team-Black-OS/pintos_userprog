@@ -14,6 +14,8 @@ void test_stack(int *t);
 struct pass_in {
     bool load_success;
     char* file_name;
-    void* shared;
+    struct shared_data* shared;
 };
+
+
 #endif /* userprog/process.h */

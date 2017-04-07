@@ -28,13 +28,10 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_EXIT: {
-      char* thr_name = thread_name();
       int *exit_code = (int*) (f->esp + 4);
       int retval = *exit_code;
-      printf("%s: exit(%d)\n",thr_name,*exit_code);
       f->eax = retval;
-      sema_up(&thread_current()->wait_sema);
-      thread_exit();
+      exit(retval);
       break;
     }
     case SYS_EXEC: {
@@ -93,4 +90,13 @@ syscall_handler (struct intr_frame *f)
       break;
     }
   }
+}
+void exit(int exit_code){
+  struct thread *t = thread_current();
+  t->parent_share->exit_code = exit_code;
+  t->parent_share->reference_count -= 1;
+  char* thr_name = thread_name();
+  printf("%s: exit(%d)\n",thr_name,exit_code);
+  sema_up(&thread_current()->wait_sema);
+  thread_exit();
 }
