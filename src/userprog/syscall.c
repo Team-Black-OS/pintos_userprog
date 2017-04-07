@@ -38,6 +38,10 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_EXEC: {
+      //printf("Execute call:\n");
+      char* buffer = *((char**) (f->esp + 4));
+      printf("Executing: %s\n",buffer);
+      f->eax = process_execute(buffer);
       break;
     }
     case SYS_WAIT: {
