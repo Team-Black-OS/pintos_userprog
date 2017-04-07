@@ -10,4 +10,10 @@ void process_activate (void);
 
 // Test stack function
 void test_stack(int *t);
+
+struct pass_in {
+    bool load_success;
+    char* file_name;
+    void* shared;
+};
 #endif /* userprog/process.h */
