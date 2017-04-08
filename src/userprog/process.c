@@ -50,10 +50,12 @@ process_execute (const char *file_name)
   strlcpy (data->file_name, file_name, strlen(file_name)+1);
 
   data->parent = thread_current();
+  sema_init(&data->load_sema,0);
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_arg, PRI_DEFAULT, start_process, data);
 
-
+  sema_down(&data->load_sema);
 
   if (tid == TID_ERROR)
     palloc_free_page (data); 
@@ -91,10 +93,13 @@ start_process (void *in_data)
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
   data->load_success = load (data->file_name, &if_.eip, &if_.esp);
+
+  sema_up(&data->load_sema);
   /* If load failed, quit. */
   palloc_free_page (data);
   if (!data->load_success) 
     thread_exit ();
+
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -118,12 +123,17 @@ start_process (void *in_data)
 int
 process_wait (tid_t child_tid) 
 {
-  struct thread* rt_thread;
-  rt_thread = thread_at_tid(child_tid);
-  if(rt_thread->tid == -1){
-    return -1;
+  struct thread* t = thread_current();
+  struct list_elem *e;
+  for (e = list_begin (&t->children); e != list_end (&t->children);
+       e = list_next (e))
+  {
+      struct shared_data* share = list_entry (e, struct shared_data, child_elem);
+      if(share->tid == child_tid){
+        sema_down(&share->dead_sema);
+        return share->exit_code;
+      }
   }
-  sema_down(&rt_thread->wait_sema);
   return -1;
 }
 

@@ -37,14 +37,14 @@ syscall_handler (struct intr_frame *f)
     case SYS_EXEC: {
       //printf("Execute call:\n");
       char* buffer = *((char**) (f->esp + 4));
-      printf("Executing: %s\n",buffer);
+      //printf("Executing: %s\n",buffer);
       f->eax = process_execute(buffer);
-      printf("After execution.\n");
+     // printf("After execution.\n");
       break;
     }
     case SYS_WAIT: {
       pid_t wait_pid = *((pid_t*) (f->esp + 4));
-      printf("Waiting for thread: %d\n",wait_pid);
+      //printf("Waiting for thread: %d\n",wait_pid);
       process_wait(wait_pid);
       break;
     }
@@ -98,6 +98,6 @@ void exit(int exit_code){
   t->parent_share->ref_count -= 1;
   char* thr_name = thread_name();
   printf("%s: exit(%d)\n",thr_name,exit_code);
-  sema_up(&thread_current()->wait_sema);
+  sema_up(&thread_current()->parent_share->dead_sema);
   thread_exit();
 }

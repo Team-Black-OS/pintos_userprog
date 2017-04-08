@@ -15,6 +15,7 @@ struct pass_in {
     bool load_success;
     char* file_name;
     struct thread* parent;
+    struct semaphore load_sema;
     struct shared_data** shared;
 };
 

@@ -89,7 +89,6 @@ struct thread
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
-    struct semaphore wait_sema;
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
     struct list children;
