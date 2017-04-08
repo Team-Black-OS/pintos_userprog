@@ -2,7 +2,7 @@
 #define USERPROG_PROCESS_H
 
 #include "threads/thread.h"
-
+#include <list.h>
 tid_t process_execute (const char *file_name);
 int process_wait (tid_t);
 void process_exit (void);
@@ -14,7 +14,8 @@ void test_stack(int *t);
 struct pass_in {
     bool load_success;
     char* file_name;
-    struct shared_data* shared;
+    struct thread* parent;
+    struct shared_data** shared;
 };
 
 

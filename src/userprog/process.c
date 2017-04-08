@@ -49,8 +49,12 @@ process_execute (const char *file_name)
   data->file_name = malloc(strlen(file_name)+1);
   strlcpy (data->file_name, file_name, strlen(file_name)+1);
 
+  data->parent = thread_current();
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (first_arg, PRI_DEFAULT, start_process, data);
+
+
+
   if (tid == TID_ERROR)
     palloc_free_page (data); 
   return tid;
@@ -68,12 +72,18 @@ start_process (void *in_data)
 
 // Allocate the structure for pass_in data here?
   struct shared_data* share = malloc(sizeof(struct shared_data));
-  sema_init(&share->wait_sema,0);
+  // Allocating everything for the shared data.
+  sema_init(&share->dead_sema,0);
+  lock_init(&share->ref_lock);
+  share->tid = thread_current()->tid;
   share->exit_code = -2;
-  share->reference_count = 2;
+  share->ref_count = 2;
 
+
+  // Add the structure to the parent thread's list.
+  list_push_front(&data->parent->children,&share->child_elem);
+  // Thread current 
   thread_current()->parent_share = share;
-
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
