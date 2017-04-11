@@ -3,9 +3,11 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 #include "lib/kernel/console.h"
 #include "lib/user/syscall.h"
 #include "userprog/process.h"
+#include "userprog/pagedir.h"
 #include "devices/shutdown.h"
 
 static void syscall_handler (struct intr_frame *);
@@ -23,7 +25,7 @@ syscall_handler (struct intr_frame *f)
   //printf("System call number is: %d\n",*sys_call_number);
   switch(*sys_call_number){
     case SYS_HALT: {
-      printf("Halt!\n");
+      //printf("Halt!\n");
       shutdown_power_off();
       break;
     }
@@ -100,4 +102,10 @@ void exit(int exit_code){
   printf("%s: exit(%d)\n",thr_name,exit_code);
   sema_up(&thread_current()->parent_share->dead_sema);
   thread_exit();
+}
+
+void validate(void* addr){
+  if(addr == NULL || !is_user_vaddr(addr) || pagedir_get_page(thread_current()->pagedir,addr) == NULL){
+    exit(-1);
+  }
 }

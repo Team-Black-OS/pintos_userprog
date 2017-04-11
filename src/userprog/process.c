@@ -64,6 +64,10 @@ process_execute (const char *file_name)
     // so our pointer is valid.
     list_push_back(&t->children,&data->shared->child_elem);
   }
+  else{
+    free(data->shared);
+    return -1;
+  }
   if (tid == TID_ERROR)
     palloc_free_page (data); 
   return tid;
