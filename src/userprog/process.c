@@ -153,6 +153,31 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  // If the child outlives the parent, the child must deallocate the
+  // shared memory.
+  if(cur->parent_share->ref_count == 1){
+    free(cur->parent_share);
+  }
+  // Otherwise, decrement count and let parent deallocate.
+  else if (cur->parent_share->ref_count == 2){
+    --cur->parent_share->ref_count;
+    //list_remove(&cur->parent_share->child_elem);
+  }
+  
+
+  // Iterate through each child in the list. If the parent outlived the child, 
+  // the parent should deallocate.
+  for(int i = 0; i < list_size(&cur->children); ++i){
+    struct list_elem *e = list_pop_front(&cur->children);
+    struct shared_data* data = list_entry(e,struct shared_data,child_elem);
+    if(data->ref_count == 1){
+      free(data);
+    }
+    else if (data->ref_count == 2){
+      --data->ref_count;
+      list_push_back(&cur->children,&data->child_elem);
+    }
+  }
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
