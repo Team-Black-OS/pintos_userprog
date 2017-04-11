@@ -33,9 +33,10 @@ process_execute (const char *file_name)
   tid_t tid;
   char *first_arg = malloc(strlen(file_name)+1);
   char* dummy_arg;
+  struct thread* t = thread_current();
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
-  struct pass_in* data = palloc_get_page (0);
+  struct pass_in* data = malloc(sizeof(struct pass_in));
   //fn_copy = palloc_get_page (0);
   if (data == NULL)
     return TID_ERROR;
@@ -49,7 +50,7 @@ process_execute (const char *file_name)
   data->file_name = malloc(strlen(file_name)+1);
   strlcpy (data->file_name, file_name, strlen(file_name)+1);
 
-  data->parent = thread_current();
+  //data->parent = thread_current();
   sema_init(&data->load_sema,0);
 
   /* Create a new thread to execute FILE_NAME. */
@@ -57,6 +58,12 @@ process_execute (const char *file_name)
 
   sema_down(&data->load_sema);
 
+  // Check if the return value is true.
+  if(data->load_success){
+    // If loaded successfully, we know that the child allocated the data
+    // so our pointer is valid.
+    list_push_back(&t->children,&data->shared->child_elem);
+  }
   if (tid == TID_ERROR)
     palloc_free_page (data); 
   return tid;
@@ -81,9 +88,10 @@ start_process (void *in_data)
   share->exit_code = -2;
   share->ref_count = 2;
 
+  data->shared = share;
 
   // Add the structure to the parent thread's list.
-  list_push_front(&data->parent->children,&share->child_elem);
+  //list_push_front(&data->parent->children,&share->child_elem);
   // Thread current 
   thread_current()->parent_share = share;
 
@@ -96,7 +104,7 @@ start_process (void *in_data)
 
   sema_up(&data->load_sema);
   /* If load failed, quit. */
-  palloc_free_page (data);
+  //palloc_free_page (data);
   if (!data->load_success) 
     thread_exit ();
 
@@ -131,6 +139,7 @@ process_wait (tid_t child_tid)
       struct shared_data* share = list_entry (e, struct shared_data, child_elem);
       if(share->tid == child_tid){
         sema_down(&share->dead_sema);
+        list_remove(&share->child_elem);
         return share->exit_code;
       }
   }
