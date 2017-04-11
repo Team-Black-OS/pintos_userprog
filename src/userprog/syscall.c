@@ -31,6 +31,7 @@ syscall_handler (struct intr_frame *f)
     }
     case SYS_EXIT: {
       int *exit_code = (int*) (f->esp + 4);
+      validate(exit_code);
       int retval = *exit_code;
       f->eax = retval;
       exit(retval);
@@ -40,6 +41,7 @@ syscall_handler (struct intr_frame *f)
       //printf("Execute call:\n");
       char* buffer = *((char**) (f->esp + 4));
       //printf("Executing: %s\n",buffer);
+      validate(buffer);
       f->eax = process_execute(buffer);
      // printf("After execution.\n");
       break;
