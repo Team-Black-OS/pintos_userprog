@@ -22,6 +22,7 @@ static void
 syscall_handler (struct intr_frame *f) 
 {
   int* sys_call_number = (int*) f->esp;
+  validate(sys_call_number);
   //printf("System call number is: %d\n",*sys_call_number);
   switch(*sys_call_number){
     case SYS_HALT: {
@@ -39,10 +40,17 @@ syscall_handler (struct intr_frame *f)
     }
     case SYS_EXEC: {
       //printf("Execute call:\n");
-      char* buffer = *((char**) (f->esp + 4));
+      char** raw = (char**) (f->esp+4);
+      validate(raw);
+      int i = 0;
+      do{
+        validate(*raw+i);
+        i+=4;
+      }while(*raw[i-4] != '\0');
+
       //printf("Executing: %s\n",buffer);
-      validate(buffer);
-      f->eax = process_execute(buffer);
+
+      f->eax = process_execute(*raw);
      // printf("After execution.\n");
       break;
     }
@@ -107,7 +115,9 @@ void exit(int exit_code){
 }
 
 void validate(void* addr){
-  if(addr == NULL || !is_user_vaddr(addr) || pagedir_get_page(thread_current()->pagedir,addr) == NULL){
-    exit(-1);
+  for(int i = 0; i < 4; ++i){
+    if(addr+i == NULL || !is_user_vaddr(addr+i) || pagedir_get_page(thread_current()->pagedir,addr+i) == NULL){
+      exit(-1);
+    }
   }
 }
