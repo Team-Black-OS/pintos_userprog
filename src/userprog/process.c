@@ -106,12 +106,16 @@ start_process (void *in_data)
   if_.eflags = FLAG_IF | FLAG_MBS;
   data->load_success = load (data->file_name, &if_.eip, &if_.esp);
 
-  sema_up(&data->load_sema);
+
   /* If load failed, quit. */
   //palloc_free_page (data);
-  if (!data->load_success) 
+  if (!data->load_success){ 
+    share->exit_code = -1;
+    sema_up(&data->load_sema);
     thread_exit ();
-
+  }else{
+    sema_up(&data->load_sema);
+  }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
