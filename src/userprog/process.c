@@ -157,6 +157,7 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+
   // If the child outlives the parent, the child must deallocate the
   // shared memory.
   if(cur->parent_share->ref_count == 1){

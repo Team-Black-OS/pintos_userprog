@@ -10,6 +10,7 @@
 #include "userprog/pagedir.h"
 #include "filesys/file.h"
 #include "filesys/filesys.h"
+#include <string.h>
 #include "devices/shutdown.h"
 
 static void syscall_handler (struct intr_frame *);
@@ -41,14 +42,12 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_EXEC: {
-      //printf("Execute call:\n");
       char** raw = (char**) (f->esp+4);
       validate(raw);
-      int i = 0;
-      do{
-        validate(*raw+i);
-        i+=4;
-      }while(*raw[i-4] != '\0');
+      validate(*raw);
+      for(int i = 0; i < strlen(*raw); ++i){
+        validate(*raw + i);
+      }
 
       //printf("Executing: %s\n",buffer);
 
@@ -64,19 +63,27 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_CREATE: {
+      char** raw = (char**) (f->esp+4);
+      validate(raw);
+      validate(*raw);
+      for(int i = 0; i < strlen(*raw); ++i){
+        validate(*raw + i);
+      }
+      unsigned *size = (unsigned*) (f->esp+8);
+      validate(size);
+      f->eax = filesys_create(*raw,*size);
       break;
     }
     case SYS_REMOVE: {
       break;
     }
     case SYS_OPEN: {
-      char **raw = (char**) (f->esp+4);
+      char** raw = (char**) (f->esp+4);
       validate(raw);
-      int i = 0;
-      do{
-        validate(*raw+i);
-        i+=4;
-      }while(*raw[i-4] != '\0');
+      validate(*raw);
+      for(int i = 0; i < strlen(*raw); ++i){
+        validate(*raw + i);
+      }
       struct thread *t = thread_current();
       int retval;
       struct file* op = filesys_open(*raw);
@@ -100,14 +107,37 @@ syscall_handler (struct intr_frame *f)
     }
     case SYS_WRITE: {
       int* fd = (int*) (f->esp + 4);
-      char* buffer = *((char**) (f->esp + 8));
-      unsigned size = *((unsigned*) (f->esp + 12));
+      validate(fd);
+
+      unsigned* size = ((unsigned*) (f->esp + 12));
+      validate(size);
+
+      char** raw = (char**) (f->esp+8);
+      validate(raw);
+      validate(*raw);
+      for(int i = 0; i < *size; ++i){
+        validate(*raw + i);
+      }
+
+
      // printf("Write Call!\n");
       int retval = 0;
       if (*fd == 1){
         //printf("Write to Console:\n");
-        putbuf(buffer,size);
-        retval = size;
+        putbuf(*raw,*size);
+        retval = *size;
+      }else{
+        struct thread* t = thread_current();
+        struct list_elem *e;
+        for (e = list_begin (&t->files); e != list_end (&t->files);
+          e = list_next (e))
+          {
+            struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+            if(fmp->fd == *fd){
+              retval = file_write(fmp->file,*raw,*size);
+              break;
+            }
+          }
       }
       f->eax = retval;
       break;
