@@ -157,7 +157,9 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
-
+  char* thr_name = thread_name();
+  printf("%s: exit(%d)\n",thr_name,cur->parent_share->exit_code);
+  sema_up(&cur->parent_share->dead_sema);
   // If the child outlives the parent, the child must deallocate the
   // shared memory.
   if(cur->parent_share->ref_count == 1){
