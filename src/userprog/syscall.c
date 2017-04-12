@@ -8,6 +8,8 @@
 #include "lib/user/syscall.h"
 #include "userprog/process.h"
 #include "userprog/pagedir.h"
+#include "filesys/file.h"
+#include "filesys/filesys.h"
 #include "devices/shutdown.h"
 
 static void syscall_handler (struct intr_frame *);
@@ -55,9 +57,10 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_WAIT: {
-      pid_t wait_pid = *((pid_t*) (f->esp + 4));
+      pid_t *wait_pid = ((pid_t*) (f->esp + 4));
+      validate(wait_pid);
       //printf("Waiting for thread: %d\n",wait_pid);
-      f->eax = process_wait(wait_pid);
+      f->eax = process_wait(*wait_pid);
       break;
     }
     case SYS_CREATE: {
@@ -67,6 +70,26 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_OPEN: {
+      char **raw = (char**) (f->esp+4);
+      validate(raw);
+      int i = 0;
+      do{
+        validate(*raw+i);
+        i+=4;
+      }while(*raw[i-4] != '\0');
+      struct thread *t = thread_current();
+      int retval;
+      struct file* op = filesys_open(*raw);
+      struct file_map fm;
+      if(op == NULL){
+        retval = -1;
+      }else{
+        fm.fd = ++t->next_fd;
+        fm.file = op;
+        list_push_back(&t->files,&fm.file_elem);
+        retval = fm.fd;
+      }
+      f->eax = retval;
       break;
     }
     case SYS_FILESIZE: {
@@ -96,6 +119,22 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_CLOSE: {
+      int* fd = (int*) (f->esp + 4);
+      validate(fd);
+      struct thread* t = thread_current();
+      if(*fd != 0 && *fd != 1){
+        struct list_elem *e;
+        for (e = list_begin (&t->files); e != list_end (&t->files);
+          e = list_next (e))
+          {
+            struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+            if(fmp->fd == *fd){
+              list_remove(e);
+              file_close(fmp->file);
+              break;
+            }
+          }
+      }
       break;
     }
     default: {

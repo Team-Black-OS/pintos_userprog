@@ -88,11 +88,25 @@ struct thread
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
     int priority;                       /* Priority. */
+
+  /*
+  ADDED IN P2
+  */
+    int next_fd;                        /* Holds the next available file descriptor integer */
+
+    struct list children;               /* List to hold all the child processes of this process */
+
+    struct list files;                  /* List to hold all the open files for this process. */
+
+    struct shared_data* parent_share;   /* Pointer to hold the data shared with this process' parent (There is only one) */
+  /*
+  END ADDED IN P2
+  */
+
     struct list_elem allelem;           /* List element for all threads list. */
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
-    struct list children;
-    struct shared_data* parent_share;
+
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -103,7 +117,13 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
   };
 
+/*
+    struct shared_data
 
+    Holds data that needs to be shared between each parent process and its children.
+    Each shared_data struct is initialized by the child process, but can be de-allocated
+    by either the parent of child, depending on which process exits first.
+*/
 struct shared_data {
     int ref_count;
     struct lock ref_lock;
@@ -111,6 +131,19 @@ struct shared_data {
     tid_t tid;
     struct semaphore dead_sema;
     struct list_elem child_elem;
+};
+
+/*
+    struct file_map
+
+    Holds a mapping between an integer "file descriptor" and the underlying 
+    struct file*. File descriptors are unique per process (not globally), and
+    are removed when the file is closed.
+*/
+struct file_map {
+  int fd;                               /* Holds the file descriptor for this file. */
+  struct file* file;                    /* Holds the actual file* for this file. */
+  struct list_elem file_elem;           /* Allows the file to be an element in a list. */
 };
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
