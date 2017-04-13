@@ -21,7 +21,6 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
-
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
    before process_execute() returns.  Returns the new process's
@@ -191,6 +190,7 @@ process_exit (void)
   }
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
+  file_close(cur->executable);
   pd = cur->pagedir;
   if (pd != NULL) 
     {
@@ -325,8 +325,10 @@ load (const char *file_name, void (**eip) (void), void **esp)
     {
       printf ("load: %s: open failed\n", exec_name);
       goto done; 
+    }else{
+        file_deny_write(file);
     }
-
+  t->executable = file;
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -415,8 +417,8 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  //file_deny_write(file);
-  file_close (file);
+
+  //file_close (file);
   return success;
 }
 

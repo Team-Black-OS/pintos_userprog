@@ -99,6 +99,8 @@ struct thread
     struct list files;                  /* List to hold all the open files for this process. */
 
     struct shared_data* parent_share;   /* Pointer to hold the data shared with this process' parent (There is only one) */
+
+    struct file* executable;            /* Holds the executable file for this process. */
   /*
   END ADDED IN P2
   */
@@ -146,7 +148,6 @@ struct file_map {
   struct list_elem file_elem;           /* Allows the file to be an element in a list. */
 };
 
-struct lock file_lock;
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */

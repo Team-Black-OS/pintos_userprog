@@ -14,11 +14,12 @@
 #include "devices/shutdown.h"
 
 static void syscall_handler (struct intr_frame *);
-
+static struct lock file_lock;
 void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  lock_init(&file_lock);
 }
 
 static void
@@ -63,6 +64,7 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_CREATE: {
+      lock_acquire(&file_lock);
       char** raw = (char**) (f->esp+4);
       validate(raw);
       validate(*raw);
@@ -72,6 +74,7 @@ syscall_handler (struct intr_frame *f)
       unsigned *size = (unsigned*) (f->esp+8);
       validate(size);
       f->eax = filesys_create(*raw,*size);
+      lock_release(&file_lock);
       break;
     }
     case SYS_REMOVE: {
@@ -84,6 +87,7 @@ syscall_handler (struct intr_frame *f)
       for(int i = 0; i < strlen(*raw); ++i){
         validate(*raw + i);
       }
+      lock_acquire(&file_lock);
       struct thread *t = thread_current();
       int retval;
       struct file* op = filesys_open(*raw);
@@ -97,6 +101,7 @@ syscall_handler (struct intr_frame *f)
         retval = fm.fd;
       }
       f->eax = retval;
+      lock_release(&file_lock);
       break;
     }
     case SYS_FILESIZE: {
@@ -105,6 +110,7 @@ syscall_handler (struct intr_frame *f)
       struct thread* t = thread_current();
       struct list_elem *e;
       int retval = -1;
+      lock_acquire(&file_lock);
       for (e = list_begin (&t->files); e != list_end (&t->files);
         e = list_next (e))
         {
@@ -115,6 +121,7 @@ syscall_handler (struct intr_frame *f)
             }
         }
       f->eax = retval;
+      lock_release(&file_lock);
       break;
     }
     case SYS_READ: {
@@ -128,7 +135,7 @@ syscall_handler (struct intr_frame *f)
       for(int i = 0; i < *size; ++i){
       validate(*raw+i);
       }
-
+      lock_acquire(&file_lock);
       if(*fd == 0){
         for(int i = 0; i < *size; ++i){
           *raw[i] = input_getc();
@@ -148,6 +155,7 @@ syscall_handler (struct intr_frame *f)
           }
       }
       f->eax = retval;
+      lock_release(&file_lock);
       break;
     }
     case SYS_WRITE: {
@@ -164,7 +172,7 @@ syscall_handler (struct intr_frame *f)
         validate(*raw + i);
       }
 
-
+      lock_acquire(&file_lock);
      // printf("Write Call!\n");
       int retval = 0;
       if (*fd == 1){
@@ -185,6 +193,7 @@ syscall_handler (struct intr_frame *f)
           }
       }
       f->eax = retval;
+      lock_release(&file_lock);
       break;
     }
     case SYS_SEEK: {
@@ -194,6 +203,7 @@ syscall_handler (struct intr_frame *f)
       validate(pos);
       struct thread* t = thread_current();
       struct list_elem *e;
+      lock_acquire(&file_lock);
       for (e = list_begin (&t->files); e != list_end (&t->files);
         e = list_next (e))
         {
@@ -203,7 +213,7 @@ syscall_handler (struct intr_frame *f)
               break;
           }
         }
-
+      lock_release(&file_lock);
       break;
     }
     case SYS_TELL: {
@@ -212,6 +222,7 @@ syscall_handler (struct intr_frame *f)
       struct thread* t = thread_current();
       struct list_elem *e;
       int retval = 0;
+      lock_acquire(&file_lock);
       for (e = list_begin (&t->files); e != list_end (&t->files);
         e = list_next (e))
         {
@@ -222,12 +233,14 @@ syscall_handler (struct intr_frame *f)
           }
         }
       f->eax = retval;
+      lock_release(&file_lock);
       break;
     }
     case SYS_CLOSE: {
       int* fd = (int*) (f->esp + 4);
       validate(fd);
       struct thread* t = thread_current();
+      lock_acquire(&file_lock);
       if(*fd != 0 && *fd != 1){
         struct list_elem *e;
         for (e = list_begin (&t->files); e != list_end (&t->files);
@@ -241,6 +254,7 @@ syscall_handler (struct intr_frame *f)
             }
           }
       }
+      lock_release(&file_lock);
       break;
     }
     default: {
