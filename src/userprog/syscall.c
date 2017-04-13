@@ -100,9 +100,54 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_FILESIZE: {
+      int *fd = (int*) (f->esp +4);
+      validate(fd);
+      struct thread* t = thread_current();
+      struct list_elem *e;
+      int retval = -1;
+      for (e = list_begin (&t->files); e != list_end (&t->files);
+        e = list_next (e))
+        {
+          struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+          if(fmp->fd == *fd){
+              retval = file_length(fmp->file);
+              break;
+            }
+        }
+      f->eax = retval;
       break;
     }
     case SYS_READ: {
+      int* fd = (int*) (f->esp +4);
+      char** raw = (char**) (f->esp+8);
+      unsigned* size = (unsigned*) (f->esp + 12);
+      int retval;
+      validate(fd);
+      validate(raw);
+      validate(size);
+      for(int i = 0; i < *size; ++i){
+      validate(*raw+i);
+      }
+
+      if(*fd == 0){
+        for(int i = 0; i < *size; ++i){
+          *raw[i] = input_getc();
+        }
+        retval = *size;
+      }else{
+        struct thread* t = thread_current();
+        struct list_elem *e;
+        for (e = list_begin (&t->files); e != list_end (&t->files);
+          e = list_next (e))
+          {
+            struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+            if(fmp->fd == *fd){
+              retval = file_read(fmp->file,*raw,*size);
+              break;
+            }
+          }
+      }
+      f->eax = retval;
       break;
     }
     case SYS_WRITE: {
