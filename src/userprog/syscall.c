@@ -4,6 +4,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 #include "lib/kernel/console.h"
 #include "lib/user/syscall.h"
 #include "userprog/process.h"
@@ -60,7 +61,7 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_CREATE: {
-      lock_acquire(&file_lock);
+
       char** raw = (char**) (f->esp+4);
       validate(raw);
       validate(*raw);
@@ -69,8 +70,7 @@ syscall_handler (struct intr_frame *f)
       }
       unsigned *size = (unsigned*) (f->esp+8);
       validate(size);
-      f->eax = filesys_create(*raw,*size);
-      lock_release(&file_lock);
+      f->eax = s_create(*raw,*size);
       break;
     }
     case SYS_REMOVE: {
@@ -83,41 +83,15 @@ syscall_handler (struct intr_frame *f)
       for(int i = 0; i < strlen(*raw); ++i){
         validate(*raw + i);
       }
-      lock_acquire(&file_lock);
-      struct thread *t = thread_current();
-      int retval;
-      struct file* op = filesys_open(*raw);
-      struct file_map fm;
-      if(op == NULL){
-        retval = -1;
-      }else{
-        fm.fd = ++t->next_fd;
-        fm.file = op;
-        list_push_back(&t->files,&fm.file_elem);
-        retval = fm.fd;
-      }
-      f->eax = retval;
-      lock_release(&file_lock);
+      f->eax = s_open(*raw);
       break;
     }
     case SYS_FILESIZE: {
       int *fd = (int*) (f->esp +4);
       validate(fd);
-      struct thread* t = thread_current();
-      struct list_elem *e;
-      int retval = -1;
-      lock_acquire(&file_lock);
-      for (e = list_begin (&t->files); e != list_end (&t->files);
-        e = list_next (e))
-        {
-          struct file_map* fmp = list_entry (e, struct file_map, file_elem);
-          if(fmp->fd == *fd){
-              retval = file_length(fmp->file);
-              break;
-            }
-        }
-      f->eax = retval;
-      lock_release(&file_lock);
+
+      f->eax = s_filesize(*fd);
+
       break;
     }
     case SYS_READ: {
@@ -130,9 +104,9 @@ syscall_handler (struct intr_frame *f)
       for(int i = 0; i < *size; ++i){
       validate(*raw+i);
       }
-      lock_acquire(&file_lock);
+
       f->eax = s_read(*fd,*raw,*size);
-      lock_release(&file_lock);
+
       break;
     }
     case SYS_WRITE: {
@@ -149,11 +123,8 @@ syscall_handler (struct intr_frame *f)
         validate(*raw + i);
       }
 
-      lock_acquire(&file_lock);
-
       f->eax = s_write(*fd,*raw,*size);
 
-      lock_release(&file_lock);
       break;
     }
     case SYS_SEEK: {
@@ -161,60 +132,19 @@ syscall_handler (struct intr_frame *f)
       validate(fd);
       unsigned* pos = (unsigned*) (f->esp + 8);
       validate(pos);
-      struct thread* t = thread_current();
-      struct list_elem *e;
-      lock_acquire(&file_lock);
-      for (e = list_begin (&t->files); e != list_end (&t->files);
-        e = list_next (e))
-        {
-          struct file_map* fmp = list_entry (e, struct file_map, file_elem);
-          if(fmp->fd == *fd){
-              file_seek(fmp->file,*pos);
-              break;
-          }
-        }
-      lock_release(&file_lock);
+      s_seek(*fd,*pos);
       break;
     }
     case SYS_TELL: {
       int* fd = (int*) (f->esp + 4);
       validate(fd);
-      struct thread* t = thread_current();
-      struct list_elem *e;
-      int retval = 0;
-      lock_acquire(&file_lock);
-      for (e = list_begin (&t->files); e != list_end (&t->files);
-        e = list_next (e))
-        {
-          struct file_map* fmp = list_entry (e, struct file_map, file_elem);
-          if(fmp->fd == *fd){
-              retval = file_tell(fmp->file);
-              break;
-          }
-        }
-      f->eax = retval;
-      lock_release(&file_lock);
+      f->eax = s_tell(*fd);
       break;
     }
     case SYS_CLOSE: {
       int* fd = (int*) (f->esp + 4);
       validate(fd);
-      struct thread* t = thread_current();
-      lock_acquire(&file_lock);
-      if(*fd != 0 && *fd != 1){
-        struct list_elem *e;
-        for (e = list_begin (&t->files); e != list_end (&t->files);
-          e = list_next (e))
-          {
-            struct file_map* fmp = list_entry (e, struct file_map, file_elem);
-            if(fmp->fd == *fd){
-              list_remove(e);
-              file_close(fmp->file);
-              break;
-            }
-          }
-      }
-      lock_release(&file_lock);
+      s_close(*fd);
       break;
     }
     default: {
@@ -229,7 +159,53 @@ void exit(int exit_code){
   //t->parent_share->ref_count -= 1;
   thread_exit();
 }
+
+int s_open(char* file){
+    lock_acquire(&file_lock);
+    struct thread *t = thread_current();
+    int retval;
+    struct file* op = filesys_open(file);
+    struct file_map* fm = (struct file_map*) malloc(sizeof(struct file_map));
+    if(op == NULL){
+      retval = -1;
+    }else{
+      fm->fd = ++t->next_fd;
+      fm->file = op;
+      list_push_back(&t->files,&fm->file_elem);
+      retval = fm->fd;
+    }
+    lock_release(&file_lock);
+    return retval;
+}
+
+int s_create(char* file, unsigned size) {
+    lock_acquire(&file_lock);
+    int retval;
+    retval = filesys_create(file,size);
+    lock_release(&file_lock);
+    return retval;
+}
+
+int s_filesize(int fd) {
+    lock_acquire(&file_lock);
+    int retval = -1;
+    struct thread* t = thread_current();
+    struct list_elem *e;
+    for (e = list_begin (&t->files); e != list_end (&t->files);
+      e = list_next (e))
+      {
+        struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+        if(fmp->fd == fd){
+            retval = file_length(fmp->file);
+            break;
+          }
+      
+      }
+    lock_release(&file_lock);
+    return retval;
+}
 int s_read(int fd, char* buf, unsigned size){
+    lock_acquire(&file_lock);
     // Initialize retval to 0.
     int retval = 0;
     // Check if this is a console read.
@@ -255,10 +231,12 @@ int s_read(int fd, char* buf, unsigned size){
           }
         }
     }
+    lock_release(&file_lock);
     // Return the number of bytes read.
     return retval;
 }
 int s_write(int fd, char* buf, unsigned size){
+      lock_acquire(&file_lock);
       // Initialize return value to 0.
       int retval = 0;
       // If this is a console write, call putbuf().
@@ -282,8 +260,64 @@ int s_write(int fd, char* buf, unsigned size){
             }
           }
       }
+      lock_release(&file_lock);
       return retval;
 }
+
+void s_seek(int fd, unsigned position){
+    lock_acquire(&file_lock);
+    struct thread* t = thread_current();
+    struct list_elem *e;
+    for (e = list_begin (&t->files); e != list_end (&t->files);
+      e = list_next (e))
+      {
+        struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+        if(fmp->fd == fd){
+            file_seek(fmp->file,position);
+            break;
+        }
+      }
+    lock_release(&file_lock);
+}
+
+unsigned s_tell(int fd) {
+    struct thread* t = thread_current();
+    struct list_elem *e;
+    int retval = 0;
+    lock_acquire(&file_lock);
+    for (e = list_begin (&t->files); e != list_end (&t->files);
+      e = list_next (e))
+      {
+        struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+        if(fmp->fd == fd){
+            retval = file_tell(fmp->file);
+            break;
+        }
+      }
+    lock_release(&file_lock);
+    return retval;
+}
+
+void s_close(int fd){
+    struct thread* t = thread_current();
+    lock_acquire(&file_lock);
+    if(fd != 0 && fd != 1){
+      struct list_elem *e;
+      for (e = list_begin (&t->files); e != list_end (&t->files);
+        e = list_next (e))
+        {
+          struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+          if(fmp->fd == fd){
+            list_remove(e);
+            file_close(fmp->file);
+            free(fmp);
+            break;
+          }
+        }
+    }
+    lock_release(&file_lock);
+}
+
 void validate(void* addr){
   for(int i = 0; i < 4; ++i){
     if(addr+i == NULL || !is_user_vaddr(addr+i) || pagedir_get_page(thread_current()->pagedir,addr+i) == NULL){
