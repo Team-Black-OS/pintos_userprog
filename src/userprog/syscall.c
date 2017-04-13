@@ -49,11 +49,7 @@ syscall_handler (struct intr_frame *f)
       for(int i = 0; i < strlen(*raw); ++i){
         validate(*raw + i);
       }
-
-      //printf("Executing: %s\n",buffer);
-
       f->eax = process_execute(*raw);
-     // printf("After execution.\n");
       break;
     }
     case SYS_WAIT: {
@@ -128,7 +124,6 @@ syscall_handler (struct intr_frame *f)
       int* fd = (int*) (f->esp +4);
       char** raw = (char**) (f->esp+8);
       unsigned* size = (unsigned*) (f->esp + 12);
-      int retval = 0;
       validate(fd);
       validate(raw);
       validate(size);
@@ -136,25 +131,7 @@ syscall_handler (struct intr_frame *f)
       validate(*raw+i);
       }
       lock_acquire(&file_lock);
-      if(*fd == 0){
-        for(int i = 0; i < *size; ++i){
-          *raw[i] = input_getc();
-        }
-        retval = *size;
-      }else{
-        struct thread* t = thread_current();
-        struct list_elem *e;
-        for (e = list_begin (&t->files); e != list_end (&t->files);
-          e = list_next (e))
-          {
-            struct file_map* fmp = list_entry (e, struct file_map, file_elem);
-            if(fmp->fd == *fd){
-              retval = file_read(fmp->file,*raw,*size);
-              break;
-            }
-          }
-      }
-      f->eax = retval;
+      f->eax = s_read(*fd,*raw,*size);
       lock_release(&file_lock);
       break;
     }
@@ -173,26 +150,9 @@ syscall_handler (struct intr_frame *f)
       }
 
       lock_acquire(&file_lock);
-     // printf("Write Call!\n");
-      int retval = 0;
-      if (*fd == 1){
-        //printf("Write to Console:\n");
-        putbuf(*raw,*size);
-        retval = *size;
-      }else{
-        struct thread* t = thread_current();
-        struct list_elem *e;
-        for (e = list_begin (&t->files); e != list_end (&t->files);
-          e = list_next (e))
-          {
-            struct file_map* fmp = list_entry (e, struct file_map, file_elem);
-            if(fmp->fd == *fd){
-              retval = file_write(fmp->file,*raw,*size);
-              break;
-            }
-          }
-      }
-      f->eax = retval;
+
+      f->eax = s_write(*fd,*raw,*size);
+
       lock_release(&file_lock);
       break;
     }
@@ -269,7 +229,61 @@ void exit(int exit_code){
   //t->parent_share->ref_count -= 1;
   thread_exit();
 }
-
+int s_read(int fd, char* buf, unsigned size){
+    // Initialize retval to 0.
+    int retval = 0;
+    // Check if this is a console read.
+    if(fd == 0){
+      for(int i = 0; i < size; ++i){
+        buf[i] = input_getc();
+      }
+        retval = size;
+    }
+    // Otherwise, it is a file read. Search for the file in the thread's
+    // file descriptor list.
+    else{
+      struct thread* t = thread_current();
+      struct list_elem *e;
+      for (e = list_begin (&t->files); e != list_end (&t->files);
+        e = list_next (e))
+        {
+          struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+          if(fmp->fd == fd){
+            // If found read the file.
+            retval = file_read(fmp->file,buf,size);
+            break;
+          }
+        }
+    }
+    // Return the number of bytes read.
+    return retval;
+}
+int s_write(int fd, char* buf, unsigned size){
+      // Initialize return value to 0.
+      int retval = 0;
+      // If this is a console write, call putbuf().
+      if (fd == 1){
+        putbuf(buf,size);
+        retval = size;
+      }
+      // Otherwise, this is a file write, so search for the correct file
+      // descriptor in the thread's file_map.
+      else{
+        struct thread* t = thread_current();
+        struct list_elem *e;
+        for (e = list_begin (&t->files); e != list_end (&t->files);
+          e = list_next (e))
+          {
+            struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+            if(fmp->fd == fd){
+              // Write to the file if found.
+              retval = file_write(fmp->file,buf,size);
+              break;
+            }
+          }
+      }
+      return retval;
+}
 void validate(void* addr){
   for(int i = 0; i < 4; ++i){
     if(addr+i == NULL || !is_user_vaddr(addr+i) || pagedir_get_page(thread_current()->pagedir,addr+i) == NULL){
