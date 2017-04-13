@@ -188,6 +188,15 @@ process_exit (void)
       list_push_back(&cur->children,&data->child_elem);
     }
   }
+
+  // Iterate through each open file. We must close each open file, and deallocate
+  // the memory used.
+  for(int i = 0; i < list_size(&cur->files); ++i){
+    struct list_elem *e = list_pop_front(&cur->files);
+    struct file_map *fm = list_entry(e,struct file_map,file_elem);
+    file_close(fm->file);
+    free(fm);
+  }
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   file_close(cur->executable);

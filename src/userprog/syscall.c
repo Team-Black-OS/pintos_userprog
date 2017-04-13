@@ -74,6 +74,13 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_REMOVE: {
+      char** raw = (char**) (f->esp+4);
+      validate(raw);
+      validate(*raw);
+      for(int i = 0; i < strlen(*raw); ++i){
+      validate(*raw + i);
+      }
+      f->eax = s_remove(*raw);
       break;
     }
     case SYS_OPEN: {
@@ -316,6 +323,14 @@ void s_close(int fd){
         }
     }
     lock_release(&file_lock);
+}
+
+int s_remove(char* name){
+    lock_acquire(&file_lock);
+    int retval;
+    retval = filesys_remove(name);
+    lock_release(&file_lock);
+    return retval;
 }
 
 void validate(void* addr){

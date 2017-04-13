@@ -29,4 +29,6 @@ unsigned s_tell(int fd);
 
 // Returns the filesize of the file represented by fd.
 int s_filesize(int fd);
+
+int s_remove(char* name);
 #endif /* userprog/syscall.h */
