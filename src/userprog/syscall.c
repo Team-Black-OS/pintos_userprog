@@ -121,7 +121,7 @@ syscall_handler (struct intr_frame *f)
       int* fd = (int*) (f->esp +4);
       char** raw = (char**) (f->esp+8);
       unsigned* size = (unsigned*) (f->esp + 12);
-      int retval;
+      int retval = 0;
       validate(fd);
       validate(raw);
       validate(size);
@@ -188,9 +188,40 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_SEEK: {
+      int* fd = (int*) (f->esp + 4);
+      validate(fd);
+      unsigned* pos = (unsigned*) (f->esp + 8);
+      validate(pos);
+      struct thread* t = thread_current();
+      struct list_elem *e;
+      for (e = list_begin (&t->files); e != list_end (&t->files);
+        e = list_next (e))
+        {
+          struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+          if(fmp->fd == *fd){
+              file_seek(fmp->file,*pos);
+              break;
+          }
+        }
+
       break;
     }
     case SYS_TELL: {
+      int* fd = (int*) (f->esp + 4);
+      validate(fd);
+      struct thread* t = thread_current();
+      struct list_elem *e;
+      int retval = 0;
+      for (e = list_begin (&t->files); e != list_end (&t->files);
+        e = list_next (e))
+        {
+          struct file_map* fmp = list_entry (e, struct file_map, file_elem);
+          if(fmp->fd == *fd){
+              retval = file_tell(fmp->file);
+              break;
+          }
+        }
+      f->eax = retval;
       break;
     }
     case SYS_CLOSE: {
