@@ -36,7 +36,7 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_EXIT: {
-      int *exit_code = (int*) (f->esp + 4);
+      int *exit_code = (int*) ((char*)f->esp + 4);
       validate(exit_code);
       int retval = *exit_code;
       f->eax = retval;
@@ -44,7 +44,7 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_EXEC: {
-      char** raw = (char**) (f->esp+4);
+      char** raw = (char**) ((char*)f->esp+4);
       validate(raw);
       validate(*raw);
       for(int i = 0; i < strlen(*raw); ++i){
@@ -54,7 +54,7 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_WAIT: {
-      pid_t *wait_pid = ((pid_t*) (f->esp + 4));
+      pid_t *wait_pid = (pid_t*) ((char*)f->esp + 4);
       validate(wait_pid);
       //printf("Waiting for thread: %d\n",wait_pid);
       f->eax = process_wait(*wait_pid);
@@ -62,19 +62,19 @@ syscall_handler (struct intr_frame *f)
     }
     case SYS_CREATE: {
 
-      char** raw = (char**) (f->esp+4);
+      char** raw = (char**) ((char*)f->esp+4);
       validate(raw);
       validate(*raw);
       for(int i = 0; i < strlen(*raw); ++i){
         validate(*raw + i);
       }
-      unsigned *size = (unsigned*) (f->esp+8);
+      unsigned *size = (unsigned*) ((char*)f->esp+8);
       validate(size);
       f->eax = s_create(*raw,*size);
       break;
     }
     case SYS_REMOVE: {
-      char** raw = (char**) (f->esp+4);
+      char** raw = (char**) ((char*)f->esp+4);
       validate(raw);
       validate(*raw);
       for(int i = 0; i < strlen(*raw); ++i){
@@ -84,7 +84,7 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_OPEN: {
-      char** raw = (char**) (f->esp+4);
+      char** raw = (char**) ((char*)f->esp+4);
       validate(raw);
       validate(*raw);
       for(int i = 0; i < strlen(*raw); ++i){
@@ -94,7 +94,7 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_FILESIZE: {
-      int *fd = (int*) (f->esp +4);
+      int *fd = (int*) ((char*)f->esp +4);
       validate(fd);
 
       f->eax = s_filesize(*fd);
@@ -102,9 +102,9 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_READ: {
-      int* fd = (int*) (f->esp +4);
-      char** raw = (char**) (f->esp+8);
-      unsigned* size = (unsigned*) (f->esp + 12);
+      int* fd = (int*) ((char*)f->esp +4);
+      char** raw = (char**) ((char*)f->esp+8);
+      unsigned* size = (unsigned*) ((char*)f->esp + 12);
       validate(fd);
       validate(raw);
       validate(size);
@@ -117,13 +117,13 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_WRITE: {
-      int* fd = (int*) (f->esp + 4);
+      int* fd = (int*) ((char*)f->esp + 4);
       validate(fd);
 
-      unsigned* size = ((unsigned*) (f->esp + 12));
+      unsigned* size = (unsigned*) ((char*)f->esp + 12);
       validate(size);
 
-      char** raw = (char**) (f->esp+8);
+      char** raw = (char**) ((char*)f->esp+8);
       validate(raw);
       validate(*raw);
       for(int i = 0; i < *size; ++i){
@@ -135,21 +135,21 @@ syscall_handler (struct intr_frame *f)
       break;
     }
     case SYS_SEEK: {
-      int* fd = (int*) (f->esp + 4);
+      int* fd = (int*) ((char*)f->esp + 4);
       validate(fd);
-      unsigned* pos = (unsigned*) (f->esp + 8);
+      unsigned* pos = (unsigned*) ((char*)f->esp + 8);
       validate(pos);
       s_seek(*fd,*pos);
       break;
     }
     case SYS_TELL: {
-      int* fd = (int*) (f->esp + 4);
+      int* fd = (int*) ((char*)f->esp + 4);
       validate(fd);
       f->eax = s_tell(*fd);
       break;
     }
     case SYS_CLOSE: {
-      int* fd = (int*) (f->esp + 4);
+      int* fd = (int*) ((char*)f->esp + 4);
       validate(fd);
       s_close(*fd);
       break;
