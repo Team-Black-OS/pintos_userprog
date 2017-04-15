@@ -179,7 +179,8 @@ process_exit (void)
 
   // Iterate through each child in the list. If the parent outlived the child, 
   // the parent should deallocate.
-  for(int i = 0; i < list_size(&cur->children); ++i){
+  int children_size = list_size(&cur->children);
+  for(int i = 0; i < children_size; ++i){
     struct list_elem *e = list_pop_front(&cur->children);
     struct shared_data* data = list_entry(e,struct shared_data,child_elem);
     if(data->ref_count == 1){
@@ -429,7 +430,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-
+  free(exec_name);
   //file_close (file);
   return success;
 }
@@ -643,16 +644,4 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
-}
-
-void test_stack(int* t) {
-    int i;
-    int argc = t[1];
-    char ** argv;
-
-    argv = (char**) t[2];
-    printf("ARGC:%d ARGV:%x\n",argc,(unsigned int)argv);
-    for(int i = 0; i < argc; i++){
-        printf("argv[%d] = %x pointing at %s\n",i,(unsigned int)argv[i],argv[i]);
-    }
 }
