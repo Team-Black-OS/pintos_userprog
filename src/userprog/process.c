@@ -147,7 +147,9 @@ process_wait (tid_t child_tid)
       if(share->tid == child_tid){
         sema_down(&share->dead_sema);
         list_remove(&share->child_elem);
-        return share->exit_code;
+        int exit_val = share->exit_code;
+        free(share);
+        return exit_val;
       }
   }
   return -1;
@@ -191,7 +193,8 @@ process_exit (void)
 
   // Iterate through each open file. We must close each open file, and deallocate
   // the memory used.
-  for(int i = 0; i < list_size(&cur->files); ++i){
+  int open_files = list_size(&cur->files);
+  for(int i = 0; i < open_files; ++i){
     struct list_elem *e = list_pop_front(&cur->files);
     struct file_map *fm = list_entry(e,struct file_map,file_elem);
     file_close(fm->file);
